@@ -1,0 +1,72 @@
+version: '3'
+services:
+
+  mysql:
+    image: mysql:8.0.32-debian
+    restart: always
+    volumes:
+      - ./mysql/conf:/etc/mysql/conf.d
+      - ./mysql/datadir:/var/lib/mysql
+      - ./mysql/db.sql:/docker-entrypoint-initdb.d/db.sql
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: fim_server_db
+    networks:
+      fim_network:
+        ipv4_address: 10.0.0.20
+    ports:
+      - "3307:3306"
+  redis:
+    restart: always
+    image: "redis:5.0.5"
+    ports:
+      - "6378:6379"
+    #    environment:
+    #      - REDIS_PASSWORD=1234
+    networks:
+      fim_network:
+        ipv4_address: 10.0.0.21
+  etcd:
+    image: bitnami/etcd:3.5.12
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes
+    ports:
+      - "2379:2379"
+    command: [ "etcd" ]
+
+  zookeeper-server:
+    image: bitnami/zookeeper:latest
+    restart: always
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      fim_network:
+        ipv4_address: 10.0.0.23
+
+  kafka-server:
+    image: bitnami/kafka:latest
+    restart: always
+    ports:
+      - "9092:9092"
+    environment:
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper-server:2181
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://10.0.0.3:9092
+    depends_on:
+      - zookeeper-server
+    networks:
+      fim_network:
+        ipv4_address: 10.0.0.24
+
+  kafka-map:
+    image: dushixiang/kafka-map:latest
+    restart: always
+    ports:
+      - "9001:8080"
+    environment:
+      - DEFAULT_USERNAME=admin
+      - DEFAULT_PASSWORD=admin
+    networks:
+      fim_network:
+        ipv4_address: 10.0.0.25

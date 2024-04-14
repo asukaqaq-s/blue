@@ -1,0 +1,6 @@
+addr: 192.168.0.110:8080
+etcd: 192.168.0.111:2379
+Log:
+  Encoding: plain
+  TimeFormat: 2006-01-02 15:04:05
+  Stat: false

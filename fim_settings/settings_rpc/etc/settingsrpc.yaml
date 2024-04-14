@@ -1,0 +1,8 @@
+Name: settingsrpc.rpc
+ListenOn: 0.0.0.0:20055
+Etcd:
+  Hosts:
+  - 192.168.0.111:2379
+  Key: settingsrpc.rpc
+Mysql:
+  DataSource: root:root@tcp(192.168.0.111:3307)/fim_server_db?charset=utf8mb4&parseTime=True&loc=Local

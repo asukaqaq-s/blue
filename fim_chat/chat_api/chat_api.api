@@ -1,0 +1,119 @@
+syntax = "v1"
+
+type ChatHistoryRequest {
+	UserID   uint `header:"User-ID"`
+	Page     int  `form:"page,optional"`
+	Limit    int  `form:"limit,optional"`
+	FriendID uint `form:"friendId"` // 好友id
+}
+type ChatHistoryResponse {
+	ID        uint   `json:"id"`
+	UserID    uint   `json:"userId"`
+	Avatar    string `json:"avatar"`
+	Nickname  string `json:"nickname"`
+	CreatedAt string `json:"created_at"` // 消息时间
+	// Msg any `json:"msg"`
+	// SystemMsg any `json:"systemMsg"`
+}
+
+type ChatSessionRequest {
+	UserID uint `header:"User-ID"`
+	Page   int  `form:"page,optional"`
+	Limit  int  `form:"limit,optional"`
+	Key    int  `form:"key,optional"`
+}
+
+type ChatSession {
+	UserID     uint   `json:"userId"`
+	Avatar     string `json:"avatar"`
+	Nickname   string `json:"nickname"`
+	CreatedAt  string `json:"created_at"` // 消息时间
+	MsgPreview string `json:"msgPreview"` // 消息预览
+	IsTop      bool   `json:"isTop"`      // 是否置顶
+}
+
+type ChatSessionResponse {
+	List  []ChatSession `json:"list"`
+	Count int64         `json:"count"`
+}
+
+type userTopRequest {
+	UserID   uint `header:"User-ID"`
+	FriendID uint `json:"friendId"` // 好友id
+}
+
+type userTopResponse {
+}
+
+type chatDeleteRequest {
+	UserID uint   `header:"User-ID"`
+	IdList []uint `json:"idList"`
+}
+
+type chatDeleteResponse {
+}
+
+type chatRequest {
+	UserID uint `header:"User-ID"`
+}
+
+type chatResponse {
+}
+
+service chat {
+	@handler chatHistory
+	get /api/chat/history (ChatHistoryRequest) returns (ChatHistoryResponse) // 聊天记录  没有用ChatHistoryResponse
+
+	@handler chatSession
+	get /api/chat/session (ChatSessionRequest) returns (ChatSessionResponse) // 最近会话列表
+
+	@handler userTop
+	post /api/chat/user_top (userTopRequest) returns (userTopResponse) // 好友置顶
+
+	@handler chatDelete
+	delete /api/chat/chat (chatDeleteRequest) returns (chatDeleteResponse) // 删除聊天记录
+
+	@handler chatHandler
+	get /api/chat/ws/chat (chatRequest) returns (chatResponse) // ws的对话
+}// goctl api go -api chat_api.api -dir . --home ../../template
+
+type chatAdminHistoryRequest {
+	SendUserID uint `form:"sendUserId"`
+	RevUserID  uint `form:"revUserId"`
+	Page       int  `form:"page,optional"`
+	Limit      int  `form:"limit,optional"`
+}
+
+type chatAdminSessionRequest {
+	RevUserID uint `form:"revUserId"`
+}
+
+type UserInfo {
+	UserID   uint   `json:"userId"`
+	Avatart  string `json:"avatart"`
+	Nickname string `json:"nickname"`
+}
+
+type chatAdminSessionResponse {
+	List  []UserInfo `json:"list"`
+	Count int        `json:"count"`
+}
+
+type chatAdminHistoryRemoveRequest {
+	IdList []uint `json:"idList"`
+}
+type chatAdminHistoryRemoveResponse {
+}
+
+@server(
+	middleware : AdminMiddleware
+	group : Admin
+)
+service chat {
+	@handler chatAdminHistory
+	get /api/chat/admin/history (chatAdminHistoryRequest) returns (ChatHistoryResponse) // 用户与用户的聊天记录
+	@handler chatAdminSession
+	get /api/chat/admin/session (chatAdminSessionRequest) returns (chatAdminSessionResponse) // 做为接受者的用户，哪些人和他聊过天
+	@handler chatAdminHistoryRemove
+	delete /api/chat/admin/history (chatAdminHistoryRemoveRequest) returns (chatAdminHistoryRemoveResponse) // 删除聊天记录
+}

@@ -1,0 +1,249 @@
+version: '3'
+services:
+
+  mysql:
+    image: mysql:8.0.32-debian
+    restart: always
+    volumes:
+      - ./mysql/conf:/etc/mysql/conf.d
+      - ./mysql/datadir:/var/lib/mysql
+      - ./mysql/db.sql:/docker-entrypoint-initdb.d/db.sql
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: fim_server_db
+    networks:
+      fim_network:
+        ipv4_address: 10.0.0.20
+    ports:
+      - "3307:3306"
+
+
+  redis:
+    restart: always
+    image: "redis:5.0.5"
+    ports:
+      - "6378:6379"
+#    environment:
+#      - REDIS_PASSWORD=1234
+    networks:
+      fim_network:
+        ipv4_address: 10.0.0.21
+
+  etcd:
+    image: bitnami/etcd:3.5.12
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes
+      - ETCD_ADVERTISE_CLIENT_URLS=http://10.0.0.22:2379
+      - ETCD_LISTEN_CLIENT_URLS=http://10.0.0.22:2379
+    networks:
+      fim_network:
+        ipv4_address: 10.0.0.22
+    command: [ "etcd"]
+
+  zookeeper-server:
+    image: bitnami/zookeeper:latest
+    restart: always
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      fim_network:
+        ipv4_address: 10.0.0.23
+
+  kafka-server:
+    image: bitnami/kafka:latest
+    restart: always
+    ports:
+      - "9092:9092"
+    environment:
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper-server:2181
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://10.0.0.3:9092
+    depends_on:
+      - zookeeper-server
+    networks:
+      fim_network:
+        ipv4_address: 10.0.0.24
+
+  kafka-map:
+    image: dushixiang/kafka-map:latest
+    restart: always
+    ports:
+      - "9001:8080"
+    environment:
+      - DEFAULT_USERNAME=admin
+      - DEFAULT_PASSWORD=admin
+    networks:
+      fim_network:
+        ipv4_address: 10.0.0.25
+
+
+  gateway:
+    build:
+      context: fim_gateway
+    restart: always
+    volumes:
+      - ./fim_gateway/gateway.yaml:/app/gateway.yaml
+    networks:
+      fim_network:
+        ipv4_address: 10.0.0.2
+    ports:
+      - "8080:8080"
+  auth_api:
+    build:
+      context: fim_auth/auth_api
+    restart: always
+    volumes:
+      - ./fim_auth/auth_api/auth.yaml:/app/auth.yaml
+    networks:
+      fim_network:
+        ipv4_address: 10.0.0.3
+    depends_on:
+      - mysql
+      - redis
+      - user_rpc
+      - settings_api
+      - kafka-server
+  chat_api:
+    build:
+      context: fim_chat/chat_api
+    restart: always
+    volumes:
+      - ./fim_chat/chat_api/chat.yaml:/app/chat.yaml
+    networks:
+      fim_network:
+        ipv4_address: 10.0.0.4
+    depends_on:
+      - mysql
+      - redis
+      - user_rpc
+      - file_rpc
+  chat_rpc:
+    build:
+      context: fim_chat/chat_rpc
+    restart: always
+    volumes:
+      - ./fim_chat/chat_rpc/chatrpc.yaml:/app/chatrpc.yaml
+    networks:
+      fim_network:
+        ipv4_address: 10.0.0.5
+    depends_on:
+      - mysql
+  file_api:
+    build:
+      context: fim_file/file_api
+    restart: always
+    volumes:
+      - ./fim_file/file_api/file.yaml:/app/file.yaml
+    networks:
+      fim_network:
+        ipv4_address: 10.0.0.6
+    depends_on:
+      - mysql
+      - user_rpc
+  file_rpc:
+    build:
+      context: fim_file/file_rpc
+    restart: always
+    volumes:
+      - ./fim_file/file_rpc/filerpc.yaml:/app/filerpc.yaml
+    networks:
+      fim_network:
+        ipv4_address: 10.0.0.7
+    depends_on:
+      - mysql
+  group_api:
+    build:
+      context: fim_group/group_api
+    restart: always
+    volumes:
+      - ./fim_group/group_api/group.yaml:/app/group.yaml
+    networks:
+      fim_network:
+        ipv4_address: 10.0.0.8
+    depends_on:
+      - mysql
+      - redis
+      - user_rpc
+      - group_rpc
+  group_rpc:
+    build:
+      context: fim_group/group_rpc
+    restart: always
+    volumes:
+      - ./fim_group/group_rpc/grouprpc.yaml:/app/grouprpc.yaml
+    networks:
+      fim_network:
+        ipv4_address: 10.0.0.9
+    depends_on:
+      - mysql
+      - redis
+  logs_api:
+    build:
+      context: fim_logs/logs_api
+    restart: always
+    volumes:
+      - ./fim_logs/logs_api/logs.yaml:/app/logs.yaml
+    networks:
+      fim_network:
+        ipv4_address: 10.0.0.10
+    depends_on:
+      - mysql
+      - user_rpc
+      - kafka-server
+  settings_api:
+    build:
+      context: fim_settings/settings_api
+    restart: always
+    volumes:
+      - ./fim_settings/settings_api/settings.yaml:/app/settings.yaml
+    networks:
+      fim_network:
+        ipv4_address: 10.0.0.11
+    depends_on:
+      - mysql
+  settings_rpc:
+    build:
+      context: fim_settings/settings_rpc
+    restart: always
+    volumes:
+      - ./fim_settings/settings_rpc/settingsrpc.yaml:/app/settingsrpc.yaml
+    networks:
+      fim_network:
+        ipv4_address: 10.0.0.12
+    depends_on:
+      - mysql
+  user_api:
+    build:
+      context: fim_user/user_api
+    restart: always
+    volumes:
+      - ./fim_user/user_api/users.yaml:/app/users.yaml
+    networks:
+      fim_network:
+        ipv4_address: 10.0.0.13
+    depends_on:
+      - mysql
+      - redis
+      - user_rpc
+      - chat_rpc
+      - group_rpc
+  user_rpc:
+    build:
+      context: fim_user/user_rpc
+    restart: always
+    volumes:
+      - ./fim_user/user_rpc/userrpc.yaml:/app/userrpc.yaml
+    networks:
+      fim_network:
+        ipv4_address: 10.0.0.14
+    depends_on:
+      - mysql
+      - redis
+networks:
+  fim_network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.0.0.0/24

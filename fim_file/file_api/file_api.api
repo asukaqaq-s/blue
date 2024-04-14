@@ -1,0 +1,66 @@
+syntax = "v1"
+
+type ImageRequest {
+	UserID uint `header:"User-ID"`
+}
+type ImageResponse {
+	Url string `json:"url"`
+}
+
+type FileRequest {
+	UserID uint `header:"User-ID"`
+}
+type FileResponse {
+	Src string `json:"src"`
+}
+
+type ImageShowRequest {
+	ImageName string `path:"imageName"`
+}
+
+type ImageShowResponse {
+}
+
+service file {
+	@handler Image
+	post /api/file/image (ImageRequest) returns (ImageResponse) // 图片上传
+	@handler File
+	post /api/file/file (FileRequest) returns (FileResponse) // 文件上传
+	@handler ImageShow
+	get /api/file/:imageName (ImageShowRequest) returns (ImageShowResponse)  // 文件预览
+}// goctl api go -api file_api.api -dir . --home ../../template
+
+type fileListRequest {
+	Page  int    `form:"page,optional"`
+	Limit int    `form:"limit,optional"`
+	Key   string `form:"key,optional"`
+}
+type FileListInfoResponse {
+	FileName  string `json:"fileName"` // 文件名称
+	Size      int64  `json:"size"`     // 文件大小
+	Path      string `json:"path"`     // 文件的实际路径
+	CreatedAt string `json:"createdAt"`
+	ID        uint   `json:"id"`
+	WebPath   string `json:"webPath"` // 访问路径
+}
+
+type fileListResponse {
+	List  []FileListInfoResponse `json:"list"`
+	Count int64                  `json:"count"`
+}
+type fileListRemoveRequest {
+	IdList []uint `json:"idList"`
+}
+type fileListRemoveResponse {
+}
+
+@server(
+	middleware : AdminMiddleware
+	group : Admin
+)
+service file {
+	@handler fileList
+	get /api/file/files (fileListRequest) returns (fileListResponse)  // 文件列表
+	@handler fileListRemove
+	delete /api/file/files (fileListRemoveRequest) returns (fileListRemoveResponse)  // 文件删除
+}
